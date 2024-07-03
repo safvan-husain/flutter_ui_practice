@@ -2,31 +2,29 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
-import 'package:ui_sample/data.dart';
 
-class ParallelEffect extends StatefulWidget {
-  const ParallelEffect({super.key});
+class FlipperCard extends StatefulWidget {
+  final Duration duration;
+  Widget Function(int index) child;
+  final int length;
+  FlipperCard({
+    super.key,
+    required this.length,
+    required this.duration,
+    required this.child,
+  });
 
   @override
-  State<ParallelEffect> createState() => _ParallelEffectState();
+  State<FlipperCard> createState() => _FlipperCardState();
 }
 
-class _ParallelEffectState extends State<ParallelEffect> {
+class _FlipperCardState extends State<FlipperCard> {
   double angle = 0.0;
-  Offset _offset = Offset.zero;
   double? prePosition;
   double x = 0;
   double y = 0;
   double z = 0;
   int imageIndex = 0;
-
-  @override
-  void initState() {
-    super.initState();
-
-    // printBouncingNumbers(0, 3.1);
-  }
 
   void animate(double start, double end, Duration duration,
       {isReverse = false}) {
@@ -56,136 +54,98 @@ class _ParallelEffectState extends State<ParallelEffect> {
           // print("updating y");
 
           y = isReverse ? (end - newValue) : (start + newValue);
-          if (isImageChanged == false && y > 1.5) {
-            print("called");
+          if (isImageChanged == false && y > 2) {
             isImageChanged = true;
             if (isReverse) {
-              if (imageIndex < 2) {
-                imageIndex++;
-              } else {
-                imageIndex = 0;
-              }
-            } else {
               if (imageIndex == 0) {
                 imageIndex = 2;
               } else {
                 imageIndex--;
               }
+            } else {
+              if (imageIndex < 2) {
+                imageIndex++;
+              } else {
+                imageIndex = 0;
+              }
             }
-            // if (imageIndex < 2 && imageIndex > 0) {
-            //   isReverse ? imageIndex++ : imageIndex--;
-            // } else {
-            //   if (imageIndex == 0) {
-            //     imageIndex = 2;
-            //   }
-            //   imageIndex = 0;
-            // }
           }
         });
       });
     }
+    if (isReverse == false) {
+      animate(0, 3.25, Duration.zero);
+    }
   }
 
-  Offset _start = Offset.zero;
-  Offset _end = Offset.zero;
+  Offset? _start;
+  Offset? _end;
 
   void _determineSwipeDirection() {
-    if (_start.dx < _end.dx) {
-      animate(0, 3.12, Duration(milliseconds: 500), isReverse: true);
-    } else if (_start.dx > _end.dx) {
-      animate(0, 3.12, Duration(milliseconds: 500));
+    if (_start == null || _end == null) {
+      return;
     }
+    double distance = (_start!.dx - _end!.dx).abs();
+    if (distance > 20) {
+      if (_start!.dx < _end!.dx) {
+        animate(0, 3.25, widget.duration, isReverse: true);
+      } else if (_start!.dx > _end!.dx) {
+        animate(0, 3.25, widget.duration);
+      }
+    }
+
+    _start = null;
+    _end = null;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Padding(
+    return GestureDetector(
+      onHorizontalDragStart: (details) {
+        _start = details.localPosition;
+      },
+      onHorizontalDragUpdate: (details) {
+        _end = details.localPosition;
+      },
+      onHorizontalDragEnd: (details) {
+        _determineSwipeDirection();
+      },
+      child: Padding(
         padding: const EdgeInsets.all(8.0),
-        child: Stack(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            GestureDetector(
-              onHorizontalDragStart: (details) {
-                _start = details.localPosition;
-              },
-              onHorizontalDragUpdate: (details) {
-                _end = details.localPosition;
-              },
-              onHorizontalDragEnd: (details) {
-                _determineSwipeDirection();
-              },
-              child: Container(
-                padding: EdgeInsets.all(20),
-                // color: Colors.amber,
-                width: double.infinity,
-                // height: double.infinity,
-                height: 500,
-                child:
-                    // PageView.builder(
-                    //   itemCount: images.length,
-                    //   controller: pageController,
-                    //   itemBuilder: (context, index) {
-                    //     return
-                    Transform(
-                  transform: Matrix4.identity()
-                    ..setEntry(3, 2, 0.001)
-                    ..rotateX(x)
-                    ..rotateY(y)
-                    ..rotateZ(z),
-                  alignment: FractionalOffset.center,
-                  // child: Container(
-                  //   color: Colors.red,
-                  //   height: 200.0,
-                  //   width: 200.0,
-                  // ),
-                  // origin: _offset,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(
-                      vertical: 20,
-                      horizontal: 10,
-                    ),
-                    // decoration: BoxDecoration(
-                    //     borderRadius: BorderRadius.circular(30),
-                    //     border: Border.all(
-                    //       color: Colors.black,
-                    //     )),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(30),
-                      child: Image.asset(
-                        images[imageIndex].path,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                  //   );
-                  // },
-                  // itemBuilder: (context, index) => Container(
-                  //   width: 200,
-                  //   height: 200,
-                  //   child: Image.asset(images[index].path),
-                  // ),
-                ),
+            Container(
+              padding: const EdgeInsets.all(20),
+              width: double.infinity,
+              height: 650,
+              child: Transform(
+                transform: Matrix4.identity()
+                  ..setEntry(3, 2, 0.001)
+                  ..rotateY(y)
+                  ..rotateX(x)
+                  ..rotateZ(z),
+                alignment: FractionalOffset.center,
+                child: widget.child(imageIndex),
               ),
             ),
-            Align(
-              alignment: Alignment.bottomCenter,
-              child: ElevatedButton(
-                onPressed: () {
-                  print(x);
-                  print(y);
-                  setState(() {
-                    angle = 1;
-                    x = 0;
-                    if (y != 0) {
-                      y = 0;
-                    } else {
-                      y = 3.1;
-                    }
-                  });
-                },
-                child: Text("reset"),
-              ),
-            )
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(
+                  widget.length,
+                  (index) => Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 5),
+                          height: 5,
+                          width: imageIndex == index ? 20 : 5,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).primaryColorLight,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        ),
+                      )),
+            ),
           ],
         ),
       ),
